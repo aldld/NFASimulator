@@ -1,6 +1,9 @@
 package ca.ericbannatyne.nfa;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 /**
@@ -22,6 +25,8 @@ public class NFA {
 
 	private static final String NFA_RUNNING = "NFA is currently running";
 	private static final String NFA_NOT_RUNNING = "NFA is not running";
+	private static final String INVALID_START_STATE = "Invalid start state";
+	private static final String INVALID_FINAL_STATE = "Invalid final state";
 
 	private Set<Character> alphabet;
 
@@ -30,9 +35,9 @@ public class NFA {
 	private Set<State> finalStates;
 
 	private boolean running = false;
-	private String string;
-	private int position = 0;
-	private Set<State> currentStates;
+	private String string = null;
+	private int position = -1;
+	private Set<State> currentStates = null;
 
 	/**
 	 * Constructs a new empty NFA whose language is over the specified alphabet.
@@ -92,17 +97,26 @@ public class NFA {
 	public NFA(Set<Character> alphabet, Set<State> states,
 			Set<State> startStates, Set<State> finalStates) {
 		this.alphabet = new HashSet<Character>(alphabet);
+
+		checkStateSetIsValid(states);
 		this.states = new HashSet<State>(states);
+
+		if (!this.states.containsAll(startStates))
+			throw new InvalidStartOrFinalStateException(INVALID_START_STATE);
+		if (!this.states.containsAll(finalStates))
+			throw new InvalidStartOrFinalStateException(INVALID_FINAL_STATE);
+
 		this.startStates = new HashSet<State>(startStates);
 		this.finalStates = new HashSet<State>(finalStates);
 	}
-	
+
 	/**
 	 * Constructs a new NFA over the same alphabet as the original NFA, with the
 	 * same states, starting states and final states as the original. This
 	 * produces a deep copy of the original NFA.
 	 * 
-	 * @param nfa the original NFA
+	 * @param nfa
+	 *            the original NFA
 	 */
 	public NFA(NFA nfa) {
 		this(nfa.alphabet, nfa.states, nfa.startStates, nfa.finalStates);
@@ -120,7 +134,7 @@ public class NFA {
 	}
 
 	/**
-	 * Returns a deep copy of the states of this NFA
+	 * Returns a deep copy of the states of this NFA.
 	 * 
 	 * @return the states
 	 */
@@ -140,6 +154,8 @@ public class NFA {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
+		checkStateSetIsValid(states);
+
 		this.states = new HashSet<State>(states);
 		this.startStates = new HashSet<State>();
 		this.finalStates = new HashSet<State>();
@@ -156,21 +172,86 @@ public class NFA {
 	}
 
 	/**
+	 * Checks whether the given state's transitions are only to other states in
+	 * the specified set of states, and that all transitions (other than
+	 * epsilon-transitions) are done via letters in this NFA's alphabet.
+	 * 
+	 * @param state
+	 *            the state to check
+	 * @throws NoSuchElementException
+	 *             if the state is not valid
+	 */
+	private void checkStateIsValid(State state, Set<State> stateSet)
+			throws NoSuchElementException {
+		Map<Character, Set<State>> transitions = state.getTransitions();
+
+		for (char letter : transitions.keySet()) {
+			if (letter != EMPTY_STR && !alphabet.contains(letter))
+				throw new NoSuchElementException("Attempted to add state \""
+						+ state.getName() + "\" with transition via nonempty "
+						+ "character '" + letter + "' not in alphabet.");
+
+			if (!stateSet.containsAll(transitions.get(letter)))
+				throw new NoSuchElementException("Attempted to add state with "
+						+ "transition to unknown state from \""
+						+ state.getName() + "\" via letter '" + letter + "'.");
+		}
+	}
+
+	/**
+	 * Checks if every state in the given set of states is valid with respect to
+	 * the given state itself.
+	 * 
+	 * @param stateSet
+	 *            the set of states to check
+	 * @throws NoSuchElementException
+	 *             if any state in the given set is not valid
+	 */
+	private void checkStateSetIsValid(Set<State> stateSet)
+			throws NoSuchElementException {
+		for (State state : stateSet)
+			checkStateIsValid(state, stateSet);
+	}
+
+	/**
 	 * Adds the specified state to the NFA.
 	 * 
 	 * @param state
 	 *            the state to add
 	 * @return true if the given state was not already in this NFA
 	 */
-	public boolean addState(State state) {
+	private boolean addState(State state) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
+		checkStateIsValid(state, states);
 
 		return states.add(state);
 	}
 
 	/**
-	 * Remove the specified state from the NFA.
+	 * 
+	 * @param name
+	 * @param transitions
+	 * @return
+	 */
+	public State newState(String name, Map<Character, Set<State>> transitions) {
+		State state = new State(this, name, transitions);
+		addState(state);
+		return state;
+	}
+
+	/**
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public State newState(String name) {
+		return newState(name, new HashMap<Character, Set<State>>());
+	}
+
+	/**
+	 * Remove the specified state from the NFA, along with any transitions from
+	 * other states to the specified state.
 	 * 
 	 * @param state
 	 *            the state to remove
@@ -181,11 +262,13 @@ public class NFA {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
+		// TODO: Remove any transitions going to this state
+
 		return states.remove(state);
 	}
 
 	/**
-	 * Get a deep copy of the starting states of this NFA
+	 * Returns a deep copy of the starting states of this NFA.
 	 * 
 	 * @return the starting states
 	 */
@@ -194,47 +277,56 @@ public class NFA {
 	}
 
 	/**
+	 * Sets the starting states of this NFA to be the specified subset of this
+	 * NFA's states.
+	 * 
 	 * @param startStates
 	 *            subset of states to be set as starting states
 	 */
 	public void setStartStates(Set<State> startStates) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
-		
-		if (!states.containsAll(startStates)) {
-			throw new RuntimeException(); // FIXME: better exception needed
-		}
 
-		// TODO: Check that param is subset of states
+		if (!states.containsAll(startStates))
+			throw new InvalidStartOrFinalStateException(INVALID_START_STATE);
+
 		this.startStates = new HashSet<State>(startStates);
 	}
 
 	/**
+	 * Checks whether a given state is a starting state or not.
 	 * 
 	 * @param state
-	 * @return
+	 *            the state to check
+	 * @return true if the given state is a starting state
 	 */
 	public boolean isStartState(State state) {
 		return states.contains(state);
 	}
 
 	/**
+	 * Sets the given state to be a starting state.
 	 * 
 	 * @param state
+	 *            the state to be set as a starting state
 	 */
-	public void addStartState(State state) {
+	boolean addStartState(State state) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
 		// TODO: Check that this is in states
+		return false;
 	}
 
 	/**
+	 * Sets the specified state to no longer be a starting state.
 	 * 
 	 * @param state
-	 * @return
+	 *            the state to no longer be a starting state
+	 * @return true if the set of starting states was changed as a result of
+	 *         this operation
 	 */
-	public boolean removeStartState(State state) {
+	boolean removeStartState(State state) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
@@ -243,39 +335,49 @@ public class NFA {
 	}
 
 	/**
-	 * @return the finalStates
+	 * Returns a deep copy of the set of final states of this NFA.
+	 * 
+	 * @return the final states of this NFA
 	 */
 	public Set<State> getFinalStates() {
 		return new HashSet<State>(finalStates);
 	}
 
 	/**
+	 * Sets the final states of this NFA to be the specified subset of this
+	 * NFA's states.
+	 * 
 	 * @param finalStates
-	 *            the finalStates to set
+	 *            subset of states to be set as final states
 	 */
 	public void setFinalStates(Set<State> finalStates) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
+		
+		if (!states.containsAll(finalStates))
+			throw new InvalidStartOrFinalStateException(INVALID_FINAL_STATE);
 
-		// TODO: Check if subset of states
 		this.finalStates = new HashSet<State>(finalStates);
 	}
 
 	/**
+	 * Checks whether or not a given state is a final state.
 	 * 
 	 * @param state
-	 * @return
+	 *            the state to check
+	 * @return true if the specified state is a final state
 	 */
 	public boolean isFinalState(State state) {
 		return false;
 	}
 
 	/**
+	 * Adds the given state to the set of final states of this NFA.
 	 * 
 	 * @param state
 	 */
-	public void addFinalState(State state) {
-
+	boolean addFinalState(State state) {
+		return false;
 	}
 
 	/**
@@ -283,7 +385,7 @@ public class NFA {
 	 * @param state
 	 * @return
 	 */
-	public boolean removeFinalState(State state) {
+	boolean removeFinalState(State state) {
 		return false;
 	}
 
@@ -323,6 +425,26 @@ public class NFA {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 		// TODO: initialize
+	}
+
+	/**
+	 * @return the string
+	 */
+	public String getString() {
+		if (!running)
+			throw new IllegalStateException(NFA_NOT_RUNNING);
+
+		return string;
+	}
+
+	/**
+	 * @return the position
+	 */
+	public int getPosition() {
+		if (!running)
+			throw new IllegalStateException(NFA_NOT_RUNNING);
+
+		return position;
 	}
 
 	/**

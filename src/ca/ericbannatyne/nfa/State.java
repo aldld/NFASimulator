@@ -19,10 +19,8 @@ public class State {
 	 * @param nfa
 	 * @param name
 	 * @param transitions
-	 * @param isFinal
 	 */
-	public State(NFA nfa, String name, Map<Character, Set<State>> transitions,
-			boolean isFinal) {
+	State(NFA nfa, String name, Map<Character, Set<State>> transitions) {
 		this.nfa = nfa;
 		this.name = name;
 		this.transitions = new HashMap<Character, Set<State>>(transitions); // Deep
@@ -37,8 +35,8 @@ public class State {
 	 * @param name
 	 * @param isFinal
 	 */
-	public State(NFA nfa, String name, boolean isFinal) {
-		this(nfa, name, new HashMap<Character, Set<State>>(), isFinal);
+	State(NFA nfa, String name) {
+		this(nfa, name, new HashMap<Character, Set<State>>());
 	}
 
 	/**
@@ -164,6 +162,44 @@ public class State {
 	private Set<State> epsilonClosureSearch(Set<State> visited) {
 		// TODO
 		return null;
+	}
+
+	/**
+	 * Set whether or not this state should be a start state of the associated
+	 * NFA.
+	 * 
+	 * @param startState
+	 *            true to set this as start state
+	 * @return true if the associated NFA's start state set changed as a result
+	 *         of this operation
+	 */
+	public boolean setStartState(boolean startState) {
+		if (startState) {
+
+		} else {
+
+		}
+
+		return false;
+	}
+
+	/**
+	 * Set whether or not this state should be a final state of the associated
+	 * NFA.
+	 * 
+	 * @param startState
+	 *            true to set this as final state
+	 * @return true if the associated NFA's final state set changed as a result
+	 *         of this operation
+	 */
+	public boolean setFinalState(boolean finalState) {
+		if (finalState) {
+			
+		} else {
+			
+		}
+
+		return false;
 	}
 
 }

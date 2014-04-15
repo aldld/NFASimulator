@@ -2,6 +2,7 @@ package ca.ericbannatyne.nfa;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -31,13 +32,20 @@ public class NFA {
 	private Set<Character> alphabet;
 
 	private Set<State> states;
-	private Set<State> startStates;
-	private Set<State> finalStates;
+	private Set<State> startStates; // Invariant: subset of states
+	private Set<State> finalStates; // Invariant: subset of states
 
 	private boolean running = false;
 	private String string = null;
 	private int position = -1;
 	private Set<State> currentStates = null;
+
+	/*
+	 * Used as cache of steps that have already been generated. The index refers
+	 * to the position of the string at that step. This is used for going
+	 * forwards and backwards through the NFA.
+	 */
+	private List<Set<State>> steps;
 
 	/**
 	 * Constructs a new empty NFA whose language is over the specified alphabet.
@@ -181,7 +189,7 @@ public class NFA {
 	 * @throws NoSuchElementException
 	 *             if the state is not valid
 	 */
-	private void checkStateIsValid(State state, Set<State> stateSet)
+	void checkStateIsValid(State state, Set<State> stateSet)
 			throws NoSuchElementException {
 		Map<Character, Set<State>> transitions = state.getTransitions();
 
@@ -229,10 +237,14 @@ public class NFA {
 	}
 
 	/**
+	 * Creates a new state with the specified transition function and attempts
+	 * to add it to this NFA.
 	 * 
 	 * @param name
+	 *            name of the state
 	 * @param transitions
-	 * @return
+	 *            the state's transition function
+	 * @return the state created
 	 */
 	public State newState(String name, Map<Character, Set<State>> transitions) {
 		State state = new State(this, name, transitions);
@@ -241,9 +253,12 @@ public class NFA {
 	}
 
 	/**
+	 * Creates a new state with an empty transition function ad adds it to this
+	 * NFA.
 	 * 
 	 * @param name
-	 * @return
+	 *            name of the state
+	 * @return the state created
 	 */
 	public State newState(String name) {
 		return newState(name, new HashMap<Character, Set<State>>());
@@ -353,7 +368,7 @@ public class NFA {
 	public void setFinalStates(Set<State> finalStates) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
-		
+
 		if (!states.containsAll(finalStates))
 			throw new InvalidStartOrFinalStateException(INVALID_FINAL_STATE);
 
@@ -375,24 +390,33 @@ public class NFA {
 	 * Adds the given state to the set of final states of this NFA.
 	 * 
 	 * @param state
+	 *            the state to be added to the set of final states
+	 * @return true if the state was not already a final state
 	 */
 	boolean addFinalState(State state) {
 		return false;
 	}
 
 	/**
+	 * Removes the given state from the set of final states of this NFA.
 	 * 
 	 * @param state
-	 * @return
+	 *            the state to remove from the set of final states
+	 * @return true if the set of final states of this NFA was changed as a
+	 *         result of this operation
 	 */
 	boolean removeFinalState(State state) {
 		return false;
 	}
 
 	/**
+	 * Generates the epsilon-closure of a given set of states: the set of all
+	 * states reachable from any state in the given set using either no moves or
+	 * using only epsilon-transitions.
 	 * 
 	 * @param states
-	 * @return
+	 *            the set of states
+	 * @return the epsilon-closure of the given set of states
 	 */
 	public Set<State> epsilonClosure(Set<State> states) {
 		// TODO: Get epsilon closure of set of states
@@ -400,9 +424,11 @@ public class NFA {
 	}
 
 	/**
+	 * Determines whether this NFA accepts a given input string.
 	 * 
 	 * @param string
-	 * @return
+	 *            the input string
+	 * @return true if this NFA accepts the input string
 	 */
 	public boolean accepts(String string) {
 		// TODO: Should (in principle) work regardless of whether NFA is
@@ -411,15 +437,20 @@ public class NFA {
 	}
 
 	/**
-	 * @return the running
+	 * Checks whether this NFA is currently running.
+	 * 
+	 * @return true if this NFA is currently running
 	 */
 	public boolean isRunning() {
 		return running;
 	}
 
 	/**
+	 * Initializes this NFA and places it in running mode, ready to process the
+	 * given input string.
 	 * 
 	 * @param string
+	 *            the input string
 	 */
 	public void start(String string) {
 		if (running)
@@ -428,7 +459,17 @@ public class NFA {
 	}
 
 	/**
-	 * @return the string
+	 * Stops the NFA's current operation and returns it to build mode.
+	 */
+	public void stop() {
+		if (!running)
+			throw new IllegalStateException(NFA_NOT_RUNNING);
+	}
+
+	/**
+	 * Gets the input string to this NFA.
+	 * 
+	 * @return the input string
 	 */
 	public String getString() {
 		if (!running)
@@ -438,7 +479,9 @@ public class NFA {
 	}
 
 	/**
-	 * @return the position
+	 * Gets the current position of this NFA along the input string.
+	 * 
+	 * @return the position of this NFA along the input string
 	 */
 	public int getPosition() {
 		if (!running)
@@ -448,7 +491,25 @@ public class NFA {
 	}
 
 	/**
+	 * Sets the position of this NFA along the input string.
 	 * 
+	 * @param position
+	 *            position to set
+	 */
+	private void setPosition(int position) {
+		if (position < 0)
+			throw new IndexOutOfBoundsException(Integer.toString(position));
+		if (position >= string.length())
+			throw new IndexOutOfBoundsException("Step: " + position
+					+ ", Length: " + string.length());
+
+		this.position = position;
+	}
+
+	/**
+	 * Performs, if possible, one step of this NFA's operation along the input
+	 * string, updating the internal set of current states and position of this
+	 * NFA.
 	 */
 	public void step() {
 		if (!running)
@@ -457,13 +518,69 @@ public class NFA {
 	}
 
 	/**
-	 * @return the currentStates
+	 * Resets, if possible, the set of current states and the position of this
+	 * NFA to the configuration prior to the previous step.
+	 */
+	public void stepBack() {
+		goToStep(position - 1);
+	}
+
+	/**
+	 * Sets the position and the set of current states of this NFA to the
+	 * position and set of current states of this NFA after the given number of
+	 * steps from the starting states.
+	 * 
+	 * @param step
+	 *            the step to go to
+	 */
+	public void goToStep(int step) {
+		if (step < 0)
+			throw new IndexOutOfBoundsException(Integer.toString(step));
+		if (step >= string.length())
+			throw new IndexOutOfBoundsException("Step: " + step + ", Length: "
+					+ string.length());
+
+		if (step < steps.size()) {
+			// Set position and current states to cached values
+			setPosition(step);
+			setCurrentStates(steps.get(step));
+		} else {
+			// Step through and generate sets of states as necessary
+			if (step < position) {
+				// Something went horribly wrong; this step should have been
+				// generated before and cached
+				throw new RuntimeException();
+				// Throw exception for now... maybe just restart from 0 and
+				// step through to position?
+			}
+
+			while (position < step) {
+				step();
+			}
+		}
+	}
+
+	/**
+	 * Gets the set of current states of this NFA.
+	 * 
+	 * @return the set of current states of this NFA
 	 */
 	public Set<State> getCurrentStates() {
 		if (!running)
 			throw new IllegalStateException(NFA_NOT_RUNNING);
 
 		return new HashSet<State>(currentStates);
+	}
+
+	/**
+	 * Sets the set of current states of this NFA.
+	 * 
+	 * @param currentStates
+	 *            the set of current states to set
+	 */
+	private void setCurrentStates(Set<State> currentStates) {
+		// TODO: Check that current states are subset of states
+		this.currentStates = new HashSet<State>(currentStates);
 	}
 
 }

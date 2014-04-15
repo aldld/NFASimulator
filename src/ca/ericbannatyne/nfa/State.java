@@ -6,7 +6,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 
+ * A state of an NFA, including the transitions from this state to other states
+ * of the associated NFA. A state may only have transitions via letters in the
+ * associated NFA's alphabet and epsilon-transitions, and all transitions must
+ * be to other states within the associated NFA.
  */
 public class State {
 
@@ -15,94 +18,101 @@ public class State {
 	private Map<Character, Set<State>> transitions;
 
 	/**
+	 * Constructs a state associated with the given NFA with a specified
+	 * transition function.
 	 * 
 	 * @param nfa
+	 *            the associated NFA
 	 * @param name
+	 *            name of the state
 	 * @param transitions
+	 *            the transition function
 	 */
 	State(NFA nfa, String name, Map<Character, Set<State>> transitions) {
 		this.nfa = nfa;
 		this.name = name;
-		this.transitions = new HashMap<Character, Set<State>>(transitions); // Deep
-																			// copy
-		// TODO: Check if transitions are valid
-		// OR: enforce adding/removing individual transitions one at a time?
+		this.transitions = new HashMap<Character, Set<State>>(transitions);
 	}
 
 	/**
+	 * Constructs a state associated with the given NFA with a default empty
+	 * transition function.
 	 * 
 	 * @param nfa
+	 *            the associated NFA
 	 * @param name
-	 * @param isFinal
+	 *            name of the state
 	 */
 	State(NFA nfa, String name) {
 		this(nfa, name, new HashMap<Character, Set<State>>());
 	}
 
 	/**
+	 * Gets a reference to the associated NFA.
 	 * 
-	 * @return
+	 * @return reference to the associated NFA
 	 */
 	public NFA getNFA() {
 		return nfa;
 	}
 
 	/**
+	 * Gets the name of this state.
 	 * 
-	 * @param nfa
-	 */
-	public void setNFA(NFA nfa) {
-		this.nfa = nfa;
-	}
-
-	/**
-	 * 
-	 * @return
+	 * @return the name
 	 */
 	public String getName() {
 		return name;
 	}
 
 	/**
+	 * Sets the name of this state.
 	 * 
 	 * @param name
 	 */
 	public void setName(String name) {
-		// TODO: Check that no other state in nfa has the same name
 		this.name = name;
 	}
 
 	/**
+	 * Gets the entire transition function of this state.
 	 * 
-	 * @return
+	 * @return the transition function
 	 */
 	public Map<Character, Set<State>> getTransitions() {
 		return new HashMap<Character, Set<State>>(transitions);
 	}
 
 	/**
+	 * Gets the set of resulting states accessible from this state via a single
+	 * occurrence of the given letter.
 	 * 
 	 * @param letter
-	 * @return
+	 *            the letter
+	 * @return the set of resulting states
 	 */
 	public Set<State> transition(Character letter) {
 		return transitions.get(letter);
 	}
 
 	/**
+	 * Sets the transition function of this state.
 	 * 
 	 * @param transitions
+	 *            the transition function
 	 */
 	public void setTransitions(Map<Character, Set<State>> transitions) {
 		// TODO: Check that all strings and states are valid for this nfa
-		this.transitions = new HashMap<Character, Set<State>>(transitions); // Deep
-																			// copy
+		this.transitions = new HashMap<Character, Set<State>>(transitions);
 	}
 
 	/**
+	 * Adds a transition from this state to another.
 	 * 
 	 * @param letter
+	 *            the letter consumed by the transition
 	 * @param next
+	 *            the state reached by the transition
 	 */
 	public void addTransition(Character letter, State next) {
 		// TODO: Check if letter is in the alphabet, and State is in the nfa
@@ -116,9 +126,12 @@ public class State {
 	}
 
 	/**
+	 * Removes the given transition from this state's transition function.
 	 * 
 	 * @param letter
+	 *            the letter consumed by the transition
 	 * @param next
+	 *            the state reached by the transition
 	 * @return true if the set of transitions from this state has been modified
 	 *         as a result of this operation
 	 */
@@ -165,6 +178,15 @@ public class State {
 	}
 
 	/**
+	 * Checks whether this state is a start state of the associated NFA.
+	 * 
+	 * @return true if this state is a start state
+	 */
+	public boolean isStartState() {
+		return nfa.isFinalState(this);
+	}
+
+	/**
 	 * Set whether or not this state should be a start state of the associated
 	 * NFA.
 	 * 
@@ -184,6 +206,15 @@ public class State {
 	}
 
 	/**
+	 * Checks whether this state is a final state of the associated NFA.
+	 * 
+	 * @return true if this state is a final state
+	 */
+	public boolean isFinalState() {
+		return nfa.isFinalState(this);
+	}
+
+	/**
 	 * Set whether or not this state should be a final state of the associated
 	 * NFA.
 	 * 
@@ -194,12 +225,22 @@ public class State {
 	 */
 	public boolean setFinalState(boolean finalState) {
 		if (finalState) {
-			
+
 		} else {
-			
+
 		}
 
 		return false;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return getName();
 	}
 
 }

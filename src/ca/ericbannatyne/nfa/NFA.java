@@ -110,9 +110,9 @@ public class NFA {
 		this.states = new HashSet<State>(states);
 
 		if (!this.states.containsAll(startStates))
-			throw new InvalidStartOrFinalStateException(INVALID_START_STATE);
+			throw new UnknownStateException(INVALID_START_STATE);
 		if (!this.states.containsAll(finalStates))
-			throw new InvalidStartOrFinalStateException(INVALID_FINAL_STATE);
+			throw new UnknownStateException(INVALID_FINAL_STATE);
 
 		this.startStates = new HashSet<State>(startStates);
 		this.finalStates = new HashSet<State>(finalStates);
@@ -303,7 +303,7 @@ public class NFA {
 			throw new IllegalStateException(NFA_RUNNING);
 
 		if (!states.containsAll(startStates))
-			throw new InvalidStartOrFinalStateException(INVALID_START_STATE);
+			throw new UnknownStateException(INVALID_START_STATE);
 
 		this.startStates = new HashSet<State>(startStates);
 	}
@@ -370,7 +370,7 @@ public class NFA {
 			throw new IllegalStateException(NFA_RUNNING);
 
 		if (!states.containsAll(finalStates))
-			throw new InvalidStartOrFinalStateException(INVALID_FINAL_STATE);
+			throw new UnknownStateException(INVALID_FINAL_STATE);
 
 		this.finalStates = new HashSet<State>(finalStates);
 	}

@@ -55,7 +55,7 @@ public class State {
 	public NFA getNFA() {
 		return nfa;
 	}
-
+	
 	/**
 	 * Gets the name of this state.
 	 * 

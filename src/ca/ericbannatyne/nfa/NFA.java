@@ -67,7 +67,7 @@ public class NFA {
 	 * @param states
 	 *            states of the NFA
 	 */
-	public NFA(Set<Character> alphabet, Set<State> states) {
+	NFA(Set<Character> alphabet, Set<State> states) {
 		this(alphabet, states, new HashSet<State>());
 	}
 
@@ -84,8 +84,7 @@ public class NFA {
 	 * @param startStates
 	 *            subset of states that are starting states
 	 */
-	public NFA(Set<Character> alphabet, Set<State> states,
-			Set<State> startStates) {
+	NFA(Set<Character> alphabet, Set<State> states, Set<State> startStates) {
 		this(alphabet, states, startStates, new HashSet<State>());
 	}
 
@@ -102,8 +101,8 @@ public class NFA {
 	 * @param finalStates
 	 *            subset of the states that are final states
 	 */
-	public NFA(Set<Character> alphabet, Set<State> states,
-			Set<State> startStates, Set<State> finalStates) {
+	NFA(Set<Character> alphabet, Set<State> states, Set<State> startStates,
+			Set<State> finalStates) {
 		this.alphabet = new HashSet<Character>(alphabet);
 
 		checkStateSetIsValid(states);
@@ -119,15 +118,36 @@ public class NFA {
 	}
 
 	/**
-	 * Constructs a new NFA over the same alphabet as the original NFA, with the
-	 * same states, starting states and final states as the original. This
-	 * produces a deep copy of the original NFA.
+	 * Constructs a new NFA over the same alphabet as the original NFA, with an
+	 * identical (isomorphic) structure to the original. This produces a deep
+	 * copy of the original NFA.
+	 * <p>
+	 * <b>NOTE:</b> The states of this NFA will still internally be associated
+	 * with the original NFA, and can therefore have side effects on the
+	 * original.
 	 * 
 	 * @param nfa
 	 *            the original NFA
 	 */
-	public NFA(NFA nfa) {
+	NFA(NFA nfa) {
 		this(nfa.alphabet, nfa.states, nfa.startStates, nfa.finalStates);
+	}
+
+	/**
+	 * Gets a deep copy of the alphabet of this NFA.
+	 * 
+	 * @return the alphabet
+	 */
+	public Set<Character> getAlphabet() {
+		return new HashSet<Character>(alphabet);
+	}
+
+	/**
+	 * @param alphabet
+	 *            the alphabet to set
+	 */
+	public void setAlphabet(Set<Character> alphabet) {
+		this.alphabet = alphabet;
 	}
 
 	/**
@@ -139,6 +159,18 @@ public class NFA {
 	 */
 	public boolean letterInAlphabet(Character letter) {
 		return alphabet.contains(letter);
+	}
+
+	/**
+	 * Checks whether the given string consists only of letters in this NFA's
+	 * alphabet.
+	 * 
+	 * @param string
+	 *            the string
+	 * @return true if all characters in the string are in this NFA's alphabet
+	 */
+	public boolean stringIsOverAlphabet(String string) {
+		return false;
 	}
 
 	/**

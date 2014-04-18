@@ -182,12 +182,34 @@ public class NFATest {
 
 	@Test
 	public void testGetStates() {
-		fail("Not yet implemented");
+		State state1 = new State(nfa, "state1");
+		State state2 = new State(nfa, "state2");
+		State state3 = new State(nfa, "state3");
+
+		Set<State> states = new HashSet<State>();
+		states.add(state1);
+		states.add(state2);
+		states.add(state3);
+		
+		nfa = new NFA(alphabet, states);
+		
+		Set<State> actual = nfa.getStates();
+		assertEquals(actual, states);
+		assertNotSame(actual, states);
 	}
 
 	@Test
 	public void testSetStates() {
-		fail("Not yet implemented");
+		State state1 = new State(nfa, "state1");
+		State state2 = new State(nfa, "state2");
+		State state3 = new State(nfa, "state3");
+
+		Set<State> states = new HashSet<State>();
+		states.add(state1);
+		states.add(state2);
+		states.add(state3);
+		
+		nfa.setStates(states);
 	}
 
 	@Test
@@ -317,6 +339,11 @@ public class NFATest {
 
 	@Test
 	public void testGetCurrentStates() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	public void testCurrentlyOnFinalState() {
 		fail("Not yet implemented");
 	}
 

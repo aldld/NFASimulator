@@ -116,6 +116,9 @@ public class State {
 	 */
 	public void addTransition(Character letter, State next) {
 		// TODO: Check if letter is in the alphabet, and State is in the nfa
+		if (!nfa.hasState(next))
+			throw new UnknownStateException(); // TODO: Better description
+			
 		if (transitions.containsKey(letter)) {
 			transitions.get(letter).add(next);
 		} else {
@@ -135,7 +138,7 @@ public class State {
 	 * @return true if the set of transitions from this state has been modified
 	 *         as a result of this operation
 	 */
-	public boolean removeTransition(String letter, State next) {
+	public boolean removeTransition(Character letter, State next) {
 		if (transitions.containsKey(letter)) {
 			Set<State> nextStates = transitions.get(letter);
 			boolean removed = nextStates.remove(next);
@@ -173,8 +176,20 @@ public class State {
 	 * @return the epsilon-closure of this state
 	 */
 	private Set<State> epsilonClosureSearch(Set<State> visited) {
-		// TODO
-		return null;
+		visited.add(this);
+		Set<State> closure = new HashSet<State>();
+		closure.add(this);
+		
+		Set<State> epsilonTransitionStates = transition(NFA.EMPTY_STR);
+		if (epsilonTransitionStates != null) {
+			for (State state : epsilonTransitionStates) {
+				if (!visited.contains(state)) {
+					closure.addAll(state.epsilonClosureSearch(visited));
+				}
+			}
+		}
+		
+		return closure;
 	}
 
 	/**
@@ -183,7 +198,7 @@ public class State {
 	 * @return true if this state is a start state
 	 */
 	public boolean isStartState() {
-		return nfa.isFinalState(this);
+		return nfa.isStartState(this);
 	}
 
 	/**
@@ -197,12 +212,10 @@ public class State {
 	 */
 	public boolean setStartState(boolean startState) {
 		if (startState) {
-
+			return nfa.addStartState(this);
 		} else {
-
+			return nfa.removeStartState(this);
 		}
-
-		return false;
 	}
 
 	/**
@@ -225,12 +238,10 @@ public class State {
 	 */
 	public boolean setFinalState(boolean finalState) {
 		if (finalState) {
-
+			return nfa.addFinalState(this);
 		} else {
-
+			return nfa.removeFinalState(this);
 		}
-
-		return false;
 	}
 
 	/*

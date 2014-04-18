@@ -1,11 +1,13 @@
 package ca.ericbannatyne.nfa;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * This class implements methods for building and running a nondeterministic
@@ -28,8 +30,10 @@ public class NFA {
 	private static final String NFA_NOT_RUNNING = "NFA is not running";
 	private static final String INVALID_START_STATE = "Invalid start state";
 	private static final String INVALID_FINAL_STATE = "Invalid final state";
+	private static final String INVALID_CURRENT_STATE = "Invalid current state";
 
 	private Set<Character> alphabet;
+	private Pattern alphabetPattern;
 
 	private Set<State> states;
 	private Set<State> startStates; // Invariant: subset of states
@@ -105,6 +109,15 @@ public class NFA {
 			Set<State> finalStates) {
 		this.alphabet = new HashSet<Character>(alphabet);
 
+		// Generate pattern for determining whether a given string is in the
+		// language alphabet* (set of all strings over alphabet)
+		StringBuilder regex = new StringBuilder("^[\\Q");
+		for (Character c : alphabet) {
+			regex.append(c);
+		}
+		regex.append("\\E]*$");
+		alphabetPattern = Pattern.compile(regex.toString());
+
 		checkStateSetIsValid(states);
 		this.states = new HashSet<State>(states);
 
@@ -170,7 +183,7 @@ public class NFA {
 	 * @return true if all characters in the string are in this NFA's alphabet
 	 */
 	public boolean stringIsOverAlphabet(String string) {
-		return false;
+		return alphabetPattern.matcher(string).matches();
 	}
 
 	/**
@@ -190,7 +203,7 @@ public class NFA {
 	 * @param states
 	 *            the states to set
 	 */
-	public void setStates(Set<State> states) {
+	void setStates(Set<State> states) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
@@ -279,6 +292,9 @@ public class NFA {
 	 * @return the state created
 	 */
 	public State newState(String name, Map<Character, Set<State>> transitions) {
+		if (running)
+			throw new IllegalStateException(NFA_RUNNING);
+		
 		State state = new State(this, name, transitions);
 		addState(state);
 		return state;
@@ -293,6 +309,9 @@ public class NFA {
 	 * @return the state created
 	 */
 	public State newState(String name) {
+		if (running)
+			throw new IllegalStateException(NFA_RUNNING);
+		
 		return newState(name, new HashMap<Character, Set<State>>());
 	}
 
@@ -309,7 +328,11 @@ public class NFA {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
-		// TODO: Remove any transitions going to this state
+		for (State s : states) {
+			for (Character c : alphabet) {
+				s.removeTransition(c, state);
+			}
+		}
 
 		return states.remove(state);
 	}
@@ -348,7 +371,7 @@ public class NFA {
 	 * @return true if the given state is a starting state
 	 */
 	public boolean isStartState(State state) {
-		return states.contains(state);
+		return startStates.contains(state);
 	}
 
 	/**
@@ -361,8 +384,10 @@ public class NFA {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
-		// TODO: Check that this is in states
-		return false;
+		if (!states.contains(state))
+			throw new UnknownStateException(INVALID_START_STATE);
+
+		return startStates.add(state);
 	}
 
 	/**
@@ -377,8 +402,7 @@ public class NFA {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
 
-		// TODO
-		return false;
+		return startStates.remove(state);
 	}
 
 	/**
@@ -415,7 +439,7 @@ public class NFA {
 	 * @return true if the specified state is a final state
 	 */
 	public boolean isFinalState(State state) {
-		return false;
+		return finalStates.contains(state);
 	}
 
 	/**
@@ -426,7 +450,13 @@ public class NFA {
 	 * @return true if the state was not already a final state
 	 */
 	boolean addFinalState(State state) {
-		return false;
+		if (running)
+			throw new IllegalStateException(NFA_RUNNING);
+
+		if (!states.contains(state))
+			throw new UnknownStateException(INVALID_FINAL_STATE);
+
+		return finalStates.add(state);
 	}
 
 	/**
@@ -438,7 +468,10 @@ public class NFA {
 	 *         result of this operation
 	 */
 	boolean removeFinalState(State state) {
-		return false;
+		if (running)
+			throw new IllegalStateException(NFA_RUNNING);
+
+		return finalStates.remove(state);
 	}
 
 	/**
@@ -451,8 +484,12 @@ public class NFA {
 	 * @return the epsilon-closure of the given set of states
 	 */
 	public Set<State> epsilonClosure(Set<State> states) {
-		// TODO: Get epsilon closure of set of states
-		return null;
+		Set<State> closure = new HashSet<State>(states);
+		for (State state : states) {
+			closure.addAll(state.epsilonClosure());
+		}
+
+		return closure;
 	}
 
 	/**
@@ -487,15 +524,34 @@ public class NFA {
 	public void start(String string) {
 		if (running)
 			throw new IllegalStateException(NFA_RUNNING);
-		// TODO: initialize
+
+		running = true;
+		if (!stringIsOverAlphabet(string))
+			throw new RuntimeException(
+					"Input string must be over this NFA's alphabet");
+		// TODO: Needs more specific exception
+
+		this.string = string;
+		position = 0;
+		currentStates = new HashSet<State>(startStates);
+
+		steps = new ArrayList<Set<State>>();
+		steps.add(currentStates);
 	}
 
 	/**
-	 * Stops the NFA's current operation and returns it to build mode.
+	 * Stops the NFA's current operation, clearing any current states or
+	 * computed steps, and returns to build mode.
 	 */
 	public void stop() {
 		if (!running)
 			throw new IllegalStateException(NFA_NOT_RUNNING);
+
+		string = null;
+		position = -1;
+		currentStates = null;
+		steps = null;
+		running = false;
 	}
 
 	/**
@@ -546,7 +602,34 @@ public class NFA {
 	public void step() {
 		if (!running)
 			throw new IllegalStateException(NFA_NOT_RUNNING);
-		// TODO
+
+		position += 1;
+		if (position == string.length())
+			return; // Do nothing other than increment position
+		if (position < 0)
+			throw new IndexOutOfBoundsException(Integer.toString(position));
+		if (position > string.length())
+			throw new IndexOutOfBoundsException("Position: " + position
+					+ ", Length: " + string.length());
+
+		if (position < steps.size()) {
+			currentStates = steps.get(position);
+		} else if (position == steps.size()) {
+			Character c = string.charAt(position);
+			Set<State> next = new HashSet<State>();
+
+			for (State state : currentStates) {
+				Set<State> cTransitionStates = state.transition(c);
+				if (cTransitionStates != null)
+					next.addAll(cTransitionStates);
+			}
+
+			currentStates = epsilonClosure(next);
+
+			steps.add(currentStates);
+		} else { // Something has gone horribly wrong. (Steps somehow skipped)
+			// TODO: DO something about this
+		}
 	}
 
 	/**
@@ -611,8 +694,24 @@ public class NFA {
 	 *            the set of current states to set
 	 */
 	private void setCurrentStates(Set<State> currentStates) {
-		// TODO: Check that current states are subset of states
+		if (!states.contains(currentStates))
+			throw new UnknownStateException(INVALID_CURRENT_STATE);
+
 		this.currentStates = new HashSet<State>(currentStates);
+	}
+	
+	/**
+	 * Checks whether the current states of this NFA contain any final states.
+	 * 
+	 * @return true if this NFA is currently on a final state
+	 */
+	public boolean currentlyOnFinalState() {
+		if (!running)
+			throw new IllegalStateException(NFA_NOT_RUNNING);
+		
+		Set<State> intersection = getCurrentStates();
+		intersection.retainAll(finalStates);
+		return intersection.size() > 0;
 	}
 
 }
